@@ -52,3 +52,14 @@ def count_parameters(model):
     print(table)
     print(f"Total Trainable Params: {total_params}")
     return total_params
+
+def add_zeros(x, max_lens, device):
+    """ add zeros to labels to match with output of decoder"""
+    batch_size = x.size(0)
+    x_lens = x.size(1)
+    x_dtype = x.dtype
+    
+    zeros_lens = max_lens-x_lens+1
+    zeros = torch.zeros(batch_size, zeros_lens).to(device)
+    x = torch.cat((x, zeros), 1)
+    return x.type(x_dtype)
