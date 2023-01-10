@@ -12,13 +12,13 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from utils import data_processing
 # Models
-from model import DeepSpeech2
+from models.model import DeepSpeech2
 
 class SpeechModule(pl.LightningModule):
     def __init__(self, model, config):
         super().__init__()
         self.model = model
-        self.criterion = nn.CTCLoss(blank=28, zero_infinity=True)
+        self.criterion = nn.CTCLoss(blank=0, zero_infinity=True)
         self.config = config
 
     def forward(self, x):

@@ -1,67 +1,41 @@
 import torch
+from typing import List
 
 class TextTransform:
     """ Maps Characters -> Integers and vice versa"""
-    def __init__(self):
-        char_map_str = """
-        ' 0
-        <SPACE> 1
-        a 2
-        b 3
-        c 4
-        d 5
-        e 6
-        f 7
-        g 8
-        h 9
-        i 10
-        j 11
-        k 12
-        l 13
-        m 14
-        n 15
-        o 16
-        p 17
-        q 18
-        r 19
-        s 20
-        t 21
-        u 22
-        v 23
-        w 24
-        x 25
-        y 26
-        z 27
-        """
+    def __init__(self, classes):
+        classes = list(classes)
         self.char2index = {}
         self.index2char = {}
-        for line in char_map_str.strip().split('\n'):
-            char, index = line.split()
-            self.char2index[char] = int(index)
-            self.index2char[int(index)] = char
-        self.index2char[1] = ' '
+        for i, char in enumerate(classes):
+            self.index2char[i] = char
+            self.char2index[char] = i
 
     def text_to_int(self, text):
         """ Convert text into an integer sequence """
-        int_sequence = []
+        int_sequence = [0]
         for c in text:
             if c == ' ':
-                ch = self.char2index['<SPACE>']
+                ch = self.char2index['|']
             else:
                 ch = self.char2index[c]
             int_sequence.append(ch)
+        int_sequence.append(0)
         return int_sequence
     
     def int_to_text(self, labels):
         """ Convert integer labels to a text sequenc """
+        if type(labels) == torch.Tensor:
+            labels = labels.tolist()
         text = []
         for i in labels:
             text.append(self.index2char[i])
-        return ''.join(text).replace('<SPACE>', ' ')
+        return ''.join(text).replace('|', ' ')
     
-text_transform = TextTransform()
+classes = "-|abcdefghijklmnopqrstuvwxyz'"
+text_transform = TextTransform(classes)
 
-def GreedyDecoder(output, labels, label_lengths, blank_label=28, collapse_repeated=True):
+def GreedyDecoder(output, labels, label_lengths, blank_label=0, collapse_repeated=True):
     """Decodes a batch of output into a batch of texts"""
     #output :  (batch, time, n_class)
     #labels :  (batch, time)
@@ -80,7 +54,7 @@ def GreedyDecoder(output, labels, label_lengths, blank_label=28, collapse_repeat
         decodes.append(text_transform.int_to_text_sequence(decode))
         return decodes, targets
 
-def Decoder(output, blank_label=28, collapse_repeated=True):
+def Decoder(output, blank_label=0, collapse_repeated=True):
     """Decodes single output into a text for inference"""    
     arg_maxes = torch.argmax(output, dim=2)
     for i, args in enumerate(arg_maxes):
@@ -92,3 +66,27 @@ def Decoder(output, blank_label=28, collapse_repeated=True):
                 decode.append(index.item())
         decoded = text_transform.int_to_text(decode)
     return decoded
+
+
+class GreedyCTCDecoder(torch.nn.Module):
+    def __init__(self, labels, blank=0):
+        super().__init__()
+        self.labels = labels   # List of classes
+        self.blank = blank     # blank label index
+
+    def forward(self, emission: torch.Tensor, predicted=True) -> List[str]:
+        """Given a sequence emission over labels, get the best path
+        Args:
+          emission (Tensor): Logit tensors. Shape `[num_seq, num_label]`.
+
+        Returns:
+          List[str]: The resulting transcript
+        """
+        if predicted:
+            indices = torch.argmax(emission, dim=-1)  # [num_seq,]
+            indices = torch.unique_consecutive(indices, dim=-1) # Delete Repeated characters
+        else:
+            indices = emission
+        indices = [i for i in indices if i != self.blank]   # Remove blank label
+        joined = "".join([self.labels[i] for i in indices]) # Convert the indices into the labels
+        return joined.replace("|", " ").strip().split()

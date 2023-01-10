@@ -5,15 +5,16 @@ from prettytable import PrettyTable
 from textprocess import TextTransform
 
 # Text Transform
-text_transform = TextTransform()
+classes = "-|abcdefghijklmnopqrstuvwxyz'"
+text_transform = TextTransform(classes)
 # Audio Transform
 train_audio_transforms = nn.Sequential(
-    torchaudio.transforms.MelSpectrogram(sample_rate = 16000, n_mels=128),
+    torchaudio.transforms.MelSpectrogram(sample_rate = 16000, n_mels=80),
     torchaudio.transforms.FrequencyMasking(freq_mask_param=15),
     torchaudio.transforms.TimeMasking(time_mask_param=35)
 )
 valid_audio_transforms = nn.Sequential(
-    torchaudio.transforms.MelSpectrogram(sample_rate = 16000, n_mels=128)
+    torchaudio.transforms.MelSpectrogram(sample_rate = 16000, n_mels=80)
 )
 
 def data_processing(data, data_type="train"):
