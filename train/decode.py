@@ -1,41 +1,7 @@
 import torch
 from typing import List
 
-class TextTransform:
-    """ Maps Characters -> Integers and vice versa"""
-    def __init__(self, classes):
-        classes = list(classes)
-        self.char2index = {}
-        self.index2char = {}
-        for i, char in enumerate(classes):
-            self.index2char[i] = char
-            self.char2index[char] = i
-
-    def text_to_int(self, text):
-        """ Convert text into an integer sequence """
-        int_sequence = [0]
-        for c in text:
-            if c == ' ':
-                ch = self.char2index['|']
-            else:
-                ch = self.char2index[c]
-            int_sequence.append(ch)
-        int_sequence.append(0)
-        return int_sequence
-    
-    def int_to_text(self, labels):
-        """ Convert integer labels to a text sequenc """
-        if type(labels) == torch.Tensor:
-            labels = labels.tolist()
-        text = []
-        for i in labels:
-            text.append(self.index2char[i])
-        return ''.join(text).replace('|', ' ')
-    
-classes = "-|abcdefghijklmnopqrstuvwxyz'"
-text_transform = TextTransform(classes)
-
-def GreedyDecoder(output, labels, label_lengths, blank_label=0, collapse_repeated=True):
+def GreedyDecoder(text_transform, output, labels, label_lengths, blank_label=0, collapse_repeated=True):
     """Decodes a batch of output into a batch of texts"""
     #output :  (batch, time, n_class)
     #labels :  (batch, time)
@@ -54,7 +20,7 @@ def GreedyDecoder(output, labels, label_lengths, blank_label=0, collapse_repeate
         decodes.append(text_transform.int_to_text_sequence(decode))
         return decodes, targets
 
-def Decoder(output, blank_label=0, collapse_repeated=True):
+def Decoder(text_transform, output, blank_label=0, collapse_repeated=True):
     """Decodes single output into a text for inference"""    
     arg_maxes = torch.argmax(output, dim=2)
     for i, args in enumerate(arg_maxes):

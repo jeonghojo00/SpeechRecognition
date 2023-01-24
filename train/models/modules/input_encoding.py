@@ -1,6 +1,8 @@
+import torch
 from torch import Tensor
 import torch.nn as nn
 import torch.nn.init as init
+from typing import Tuple
 
 # 1. To scale down the features, pass through two Convolutional layers with 3x3 kernel size and stride of 2
 class CNN_Layers(nn.Module):
@@ -58,9 +60,10 @@ class VGGnet(nn.Module):
         
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2)
     
-    def get_output_dim(self):
-        output_dim = ((self.n_feats - 3) // 2) + 1
-        output_dim = ((output_dim - 3) // 2) + 1
+    def get_output_dim(self, input_dim):
+        # Maxpooling decreases the input dimension while dimensions through cnn stay the same.
+        output_dim = ((input_dim + (2*self.maxpool.padding) - self.maxpool.kernel_size) // self.maxpool.stride) + 1
+        output_dim = ((output_dim + (2*self.maxpool.padding) - self.maxpool.kernel_size) // self.maxpool.stride) + 1
         return output_dim
         
     def forward(self, x):
@@ -84,7 +87,7 @@ class Linear(nn.Module):
     def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
         super(Linear, self).__init__()
         self.linear = nn.Linear(in_features, out_features, bias=bias)
-        init.xavier_uniform(self.linear.weight)
+        torch.nn.init.xavier_uniform_(self.linear.weight)
         
         if bias:
             init.zeros_(self.linear.bias)
@@ -105,17 +108,26 @@ class InputEncoder(nn.Module):
         - 1 Linear Layer to obtain embed_dim (Input Encoding)
         - embed_dim dimensional Positional Encoding is added to the Input Encoding
     """
-    def __init__(self, conv: str='vgg', n_feats: int = 80, embed_dim: int = 256) -> None:
+    def __init__(self, conv_subsampling: str='vgg', n_feats: int = 80, embed_dim: int = 256, dropout_p: float = 0.1) -> None:
         super(InputEncoder, self).__init__()
-        if conv == 'vgg':
+        self.conv_subsampling = conv_subsampling
+        if conv_subsampling == 'vgg':
             self.cnn = VGGnet(out_channels=128, n_feats=n_feats)
         else:
             self.cnn = CNN_Layers(out_channels=256, n_feats=n_feats)
-        self.linear = Linear(in_features = int(self.cnn.get_output_dim()*self.cnn.out_channels), 
+        self.linear = Linear(in_features = int(self.cnn.get_output_dim(n_feats)*self.cnn.out_channels), 
                              out_features = embed_dim)
-        self.dropout = nn.Dropout(p=0.1)
+        self.dropout = nn.Dropout(p=dropout_p)
         
-    def forward(self, x: Tensor) -> Tensor:
+    def forward(self, x: Tensor, x_lens: Tensor) -> Tuple[Tensor, Tensor]:
         output = self.cnn(x)
         output = self.linear(output)
-        return self.dropout(output)   
+        output_lens = x_lens
+        if self.conv_subsampling == "vgg":
+            for i in range(len(output_lens)):
+                output_lens[i] = self.cnn.get_output_dim(output_lens[i])
+        else:
+            output_lens = x_lens >> 2
+            output_lens -= 1
+        
+        return self.dropout(output), output_lens   
