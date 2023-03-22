@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 from models.modules.input_encoding import InputEncoder
-from models.modules.half_feedforward import HalfFeedForward
+from models.modules.feedforward import FeedForward
 from models.modules.attention import Conformer_MultiHeadAttention
 from models.modules.convolution import Convolution
 
@@ -94,9 +94,9 @@ class ConformerBlock(nn.Module):
         super().__init__()
         
         self.sequential = nn.Sequential(
-            ResidualConnection(module=HalfFeedForward(embed_dim = embed_dim, 
-                                                      expansion_factor= ff_expansion_factor,
-                                                      dropout_p = dropout_p),
+            ResidualConnection(module=FeedForward(embed_dim = embed_dim, 
+                                                    expansion_factor= ff_expansion_factor,
+                                                    dropout_p = dropout_p),
                                module_factor = 0.5),
             ResidualConnection(module=Conformer_MultiHeadAttention(embed_dim = embed_dim, 
                                                                n_heads = mha_heads, 
@@ -104,9 +104,9 @@ class ConformerBlock(nn.Module):
             ResidualConnection(module=Convolution(in_channels = embed_dim,
                                                   kernel_size = conv_kernel_size,
                                                   dropout_p = dropout_p)),
-            ResidualConnection(module=HalfFeedForward(embed_dim = embed_dim, 
-                                                      expansion_factor= ff_expansion_factor,
-                                                      dropout_p = dropout_p),
+            ResidualConnection(module=FeedForward(embed_dim = embed_dim, 
+                                                    expansion_factor= ff_expansion_factor,
+                                                    dropout_p = dropout_p),
                                module_factor = 0.5), 
             nn.LayerNorm(embed_dim)
         )

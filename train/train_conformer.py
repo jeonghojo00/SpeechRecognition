@@ -144,7 +144,7 @@ def main(config):
         logger = logger, 
         max_epochs = int(config['TRAIN']['epochs']), 
         gradient_clip_val = 1.0,
-        callbacks = [checkpoint_callback(config['DEFAULT']['checkpoint_path'])],
+        callbacks = [checkpoint_callback(str(config['DEFAULT']['checkpoint_path']))],
         resume_from_checkpoint = config['DEFAULT']['resume_from_checkpoint']
     )
 
