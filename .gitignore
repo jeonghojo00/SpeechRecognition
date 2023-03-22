@@ -5,3 +5,5 @@ saved_model/sr_improvedDS2_sr=16000_val_loss=0.63_model.pt
 *.flac
 *.txt
 *.gz
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
